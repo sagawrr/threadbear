@@ -88,6 +88,29 @@ final class AppearanceTests: XCTestCase {
         }
     }
 
+    func testAMascotPictureStandsInForEveryPoseWithoutItsOwn() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        func file(_ name: String, width: Int) throws -> String {
+            let image = try XCTUnwrap(Self.picture(width: width, height: width))
+            let png = try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+            let url = folder.appendingPathComponent(name)
+            try png.write(to: url)
+            return url.path
+        }
+        let look = Appearance(defaults: defaults)
+        // None set: the drawn mascot.
+        for pose in Bear.Pose.allCases { XCTAssertNil(look.mascot(pose)) }
+        defaults.set(try file("mascot.png", width: 64), forKey: "appearance.picture.mascot")
+        defaults.set(try file("asleep.png", width: 32), forKey: "appearance.picture.mascotAsleep")
+        XCTAssertEqual(look.mascot(.wave)?.size.width, 64)
+        XCTAssertEqual(look.mascot(.sit)?.size.width, 64)
+        XCTAssertEqual(look.mascot(.sleep)?.size.width, 32)
+        // No picture of its own: the mascot's.
+        XCTAssertEqual(look.mascot(.cub)?.size.width, 64)
+    }
+
     func testABlurKeepsThePicturesShape() throws {
         let picture = try XCTUnwrap(Self.picture(width: 400, height: 200))
         let sharp = try XCTUnwrap(Appearance.blurred(picture, points: 0))

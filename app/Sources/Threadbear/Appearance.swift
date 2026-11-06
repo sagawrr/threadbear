@@ -89,13 +89,19 @@ final class Appearance {
         }
     }
 
-    /// The two pictures on the Librarian's and Scheduled's pages.
+    /// The pictures you can put in place of the drawn mascot: the mascot
+    /// herself (the working line, the tour), how she looks hibernating
+    /// and while sub-agents are out, and the two at the top of the
+    /// Librarian's and Scheduled's pages.
     enum Slot: String, CaseIterable, Identifiable {
-        case librarian, scheduled
+        case mascot, mascotAsleep, mascotSmall, librarian, scheduled
 
         var id: String { rawValue }
         var title: String {
             switch self {
+            case .mascot: "Mascot"
+            case .mascotAsleep: "Mascot, hibernating"
+            case .mascotSmall: "Mascot, sub-agents"
             case .librarian: "Librarian page"
             case .scheduled: "Scheduled page"
             }
@@ -168,7 +174,12 @@ final class Appearance {
     /// Why the last picture wasn't taken, for Settings to say.
     private(set) var problem: String?
     /// Bumped when a page picture changes, so the pages draw the new one.
-    private(set) var slotsVersion = 0
+    private(set) var slotsVersion = 0 {
+        didSet { NotificationCenter.default.post(name: Self.picturesChanged, object: self) }
+    }
+    /// Posted when a mascot or page picture changes, for the AppKit side
+    /// (the transcript's working line) to draw the new one.
+    nonisolated static let picturesChanged = Notification.Name("Appearance.picturesChanged")
     /// Page pictures already read, by path: a page asks every time it draws.
     @ObservationIgnored private var slotCache: [String: NSImage] = [:]
 
@@ -319,8 +330,17 @@ final class Appearance {
         guard let path = defaults.string(forKey: slot.key) else { return nil }
         if let cached = slotCache[path] { return cached }
         guard let image = Self.readScaled(URL(fileURLWithPath: path), maxPixels: 1200) else { return nil }
-        slotCache = [path: image].merging(slotCache.filter { $0.key != path }) { new, _ in new }
+        slotCache[path] = image
         return image
+    }
+
+    /// Your picture for a pose of the mascot: its own, else the mascot's.
+    func mascot(_ pose: Bear.Pose) -> NSImage? {
+        switch pose {
+        case .sit, .wave: picture(.mascot)
+        case .sleep: picture(.mascotAsleep) ?? picture(.mascot)
+        case .cub: picture(.mascotSmall) ?? picture(.mascot)
+        }
     }
 
     func hasPicture(_ slot: Slot) -> Bool {
@@ -332,12 +352,18 @@ final class Appearance {
         guard let copy = importPicture(source, named: slot.rawValue) else { return }
         let old = defaults.string(forKey: slot.key)
         defaults.set(copy.path, forKey: slot.key)
-        if let old, old != copy.path { removeIfOurs(old) }
+        if let old, old != copy.path {
+            removeIfOurs(old)
+            slotCache[old] = nil
+        }
         slotsVersion += 1
     }
 
     func removePicture(_ slot: Slot) {
-        if let old = defaults.string(forKey: slot.key) { removeIfOurs(old) }
+        if let old = defaults.string(forKey: slot.key) {
+            removeIfOurs(old)
+            slotCache[old] = nil
+        }
         defaults.removeObject(forKey: slot.key)
         slotsVersion += 1
     }

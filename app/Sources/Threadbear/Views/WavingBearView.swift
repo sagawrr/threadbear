@@ -50,8 +50,15 @@ final class WavingBearView: NSView {
     private let paw = CALayer()
     private let arm = CAShapeLayer()
     private let pad = CAShapeLayer()
+    /// Your own picture of the mascot (Settings > Appearance), shown in
+    /// place of the drawn parts. It breathes and sways as they do, on
+    /// tracks of its own: it sits outside `stage`, whose y-down grid
+    /// would stand a picture on its head.
+    private let portrait = CALayer()
+    private var pictures: NSObjectProtocol?
 
     private var builtSide: CGFloat = 0
+    private var builtPictures = -1
 
     /// Whether any of the looping movement is on.
     var isAnimating: Bool { paw.animation(forKey: Key.paw) != nil }
@@ -77,6 +84,11 @@ final class WavingBearView: NSView {
         for part in [ears, head, fringe, eyes, nose] { figure.addSublayer(part) }
         figure.addSublayer(paw)
         for part in [arm, pad] { paw.addSublayer(part) }
+        layer?.addSublayer(portrait)
+        portrait.contentsGravity = .resizeAspect
+        pictures = NotificationCenter.default.addObserver(forName: Appearance.picturesChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.rebuild() }
+        }
         setAccessibilityRole(.image)
         setAccessibilityLabel(Bear.description(.wave))
         applyTint()
@@ -85,6 +97,10 @@ final class WavingBearView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    deinit {
+        if let pictures { NotificationCenter.default.removeObserver(pictures) }
+    }
 
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
@@ -119,6 +135,10 @@ final class WavingBearView: NSView {
             (0, 1), (3, 1), (3.06, 0.12), (3.14, 1),
             (6.7, 1), (6.76, 0.12), (6.84, 1), (6.9, 0.12), (6.98, 1), (Timing.blink, 1),
         ]), forKey: Key.blink)
+        portrait.add(Self.loop("transform.rotation.z", length: Timing.wave,
+                               keys: Timing.paw.map { ($0.at, $0.degrees * 0.5 * .pi / 180) }), forKey: Key.sway)
+        portrait.add(Self.loop("transform.scale", length: Timing.breath,
+                               keys: [(0, 1), (Timing.breath / 2, 1.05), (Timing.breath, 1)]), forKey: Key.breath)
         if fresh {
             let pop = CASpringAnimation(keyPath: "transform.scale")
             pop.fromValue = 0.4
@@ -128,6 +148,7 @@ final class WavingBearView: NSView {
             pop.damping = 11
             pop.duration = pop.settlingDuration
             arrival.add(pop, forKey: Key.arrival)
+            portrait.add(pop, forKey: Key.arrival)
         }
     }
 
@@ -137,6 +158,7 @@ final class WavingBearView: NSView {
         figure.removeAnimation(forKey: Key.breath)
         eyes.removeAnimation(forKey: Key.blink)
         arrival.removeAnimation(forKey: Key.arrival)
+        portrait.removeAllAnimations()
     }
 
     /// A forever-repeating track from (seconds, value) pairs. Thirty frames
@@ -177,7 +199,7 @@ final class WavingBearView: NSView {
         let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for part in [stage, arrival, figure, paw, ears, earMask, head, fringe, eyes, nose, arm, pad] {
+        for part in [stage, arrival, figure, paw, ears, earMask, head, fringe, eyes, nose, arm, pad, portrait] {
             part.contentsScale = scale
         }
         CATransaction.commit()
@@ -191,8 +213,10 @@ final class WavingBearView: NSView {
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
         stage.frame = bounds
-        guard side > 0, side != builtSide else { return }
+        let version = Appearance.shared.slotsVersion
+        guard side > 0, side != builtSide || version != builtPictures else { return }
         builtSide = side
+        builtPictures = version
         let unit = side / 24
         let scale = CGAffineTransform(scaleX: unit, y: unit)
         var transform = scale
@@ -218,6 +242,14 @@ final class WavingBearView: NSView {
         pin(eyes, about: pose.eyeLine)
         pin(paw, about: Mascot.Wave.shoulder)
         for part in [ears, head, fringe, nose, arm, pad] { part.frame = square }
+
+        // A picture of your own stands in for all the drawn parts.
+        let picture = Appearance.shared.mascot(.wave)
+        portrait.bounds = square
+        portrait.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        portrait.contents = picture?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        portrait.isHidden = picture == nil
+        for part in [ears, head, fringe, eyes, nose, paw] as [CALayer] { part.isHidden = picture != nil }
 
         head.path = scaled(pose.head)
         ears.path = scaled(pose.tails)

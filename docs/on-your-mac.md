@@ -32,9 +32,11 @@ File references are where to look.
   the account's full name from `getent passwd` rather than `id -F`.
 - **A command:** `~/.local/bin/threadbear`.
 - **This fork's look:** a picture you choose in Settings > Appearance (the
-  wallpaper, the Librarian's and Scheduled's page pictures) is copied to
+  wallpaper, the mascot's pictures, the Librarian's and Scheduled's page
+  pictures) is copied to
   `~/Library/Application Support/Threadbear/appearance/`, and deleted from
-  there when you remove or replace it. The rest (backdrop, blur, fade, how
+  there when you remove or replace it. An `icon.png` there, if you put one,
+  is the app's icon from its next build (`app/build-app.sh`). The rest (backdrop, blur, fade, how
   see-through the panels are, the accent) is in the app's own defaults,
   where the accent is also written as `AppleAccentColor` and
   `AppleHighlightColor`, which recolour this app only. None of it is sent

@@ -70,9 +70,9 @@ struct AppearanceSettings: View {
                 }
             }
 
-            SettingsSection("Page pictures",
-                            about: "The picture at the top of the Librarian's page and of Scheduled's. Without one of your own, each shows the mascot.",
-                            ask: "set one from a file you name.") {
+            SettingsSection("Pictures",
+                            about: "Your own pictures in place of the drawn mascot: on the working line and the tour, while a thread hibernates or its sub-agents are out, and at the top of the Librarian's page and of Scheduled's. A square picture suits the mascot best. Each is copied into Threadbear's folder on this Mac and never leaves it.",
+                            ask: "set one from a file you name, or cut a character out of a picture for you.") {
                 ForEach(Appearance.Slot.allCases) { slot in
                     LabeledContent(slot.title) {
                         HStack(spacing: 8) {
@@ -80,10 +80,10 @@ struct AppearanceSettings: View {
                                 Thumbnail(image: picture)
                             }
                             Button("Choose…") { pick { appearance.choosePicture($0, for: slot) } }
-                                .tip("Pick a picture for the \(slot.title.lowercased())")
+                                .tip("Pick a picture for: \(slot.title)")
                             if appearance.hasPicture(slot) {
                                 Button("Remove") { appearance.removePicture(slot) }
-                                    .tip("Go back to the mascot and delete Threadbear's copy of the picture")
+                                    .tip("Go back to the drawn mascot and delete Threadbear's copy of the picture")
                             }
                         }
                     }

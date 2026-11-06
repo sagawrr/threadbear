@@ -92,9 +92,7 @@ struct InboxZero: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: zoomed(6)) {
-            Image(nsImage: Bear.image(.wave, side: zoomed(30)))
-                .renderingMode(.template)
-                .foregroundStyle(.secondary)
+            Bear.view(.wave, side: zoomed(30))
                 // A couple of quick tilts from its feet, like a wave.
                 .keyframeAnimator(initialValue: 0.0, trigger: waves) { bear, angle in
                     bear.rotationEffect(.degrees(angle), anchor: .bottom)

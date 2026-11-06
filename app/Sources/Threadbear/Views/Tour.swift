@@ -633,9 +633,7 @@ private struct TourCard: View {
         let failed = tour.firstThreadFailed
         VStack(alignment: .leading, spacing: zoomed(8)) {
             if let bear = step.bear {
-                Image(nsImage: Bear.image(bear, side: zoomed(44)))
-                    .renderingMode(.template)
-                    .foregroundStyle(.secondary)
+                Bear.view(bear, side: zoomed(44))
                     .accessibilityHidden(true)
             }
             HStack(spacing: zoomed(6)) {

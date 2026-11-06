@@ -111,9 +111,7 @@ struct SetupPanel: View {
             VStack(alignment: .leading, spacing: zoomed(14)) {
                 if checklist.left == 0 {
                     HStack(spacing: zoomed(10)) {
-                        Image(nsImage: Bear.image(.wave, side: zoomed(36)))
-                            .renderingMode(.template)
-                            .foregroundStyle(.secondary)
+                        Bear.view(.wave, side: zoomed(36))
                             .accessibilityHidden(true)
                         Text("All set.")
                             .font(.system(size: TypeScale.cardTitle, weight: .semibold))
