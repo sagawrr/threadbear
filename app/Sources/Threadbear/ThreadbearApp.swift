@@ -18,6 +18,8 @@ struct ThreadbearApp: App {
         // As early as can be, to catch a crash at launch. Only in the
         // installed release build (CrashReporting says why).
         CrashReporting.start()
+        // This fork's accent colour, which AppKit reads once as it starts.
+        Appearance.applyAccentAtLaunch()
         UserDefaults.standard.register(defaults: [
             // AppKit treats command-line arguments it can't pair up as files
             // to open, and then skips opening the window.

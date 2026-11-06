@@ -9,7 +9,7 @@ struct ScheduledHome: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        HomePage(picture: Art.scheduled, pictureLabel: "The bear winding a big alarm clock, beside a calendar",
+        HomePage(picture: Art.scheduled, pictureLabel: "Scheduled's picture",
                  stats: app.schedulesSupported ? ScheduledStats.tiles(app.schedules, now: app.now) : []) {
             VStack(alignment: .leading, spacing: zoomed(12)) {
                 HomeTitle(title: "Scheduled",

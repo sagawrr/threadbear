@@ -31,6 +31,14 @@ File references are where to look.
   apps; it converts pictures with ImageMagick and rsvg-convert, and reads
   the account's full name from `getent passwd` rather than `id -F`.
 - **A command:** `~/.local/bin/threadbear`.
+- **This fork's look:** a picture you choose in Settings > Appearance (the
+  wallpaper, the Librarian's and Scheduled's page pictures) is copied to
+  `~/Library/Application Support/Threadbear/appearance/`, and deleted from
+  there when you remove or replace it. The rest (backdrop, blur, fade, how
+  see-through the panels are, the accent) is in the app's own defaults,
+  where the accent is also written as `AppleAccentColor` and
+  `AppleHighlightColor`, which recolour this app only. None of it is sent
+  anywhere (`app/Sources/Threadbear/Appearance.swift`).
 - **Files:** the data folder `~/Library/Application Support/Threadbear`
   (threads, settings, `secrets/`, runner releases, the pinned release key
   `upstream-signers`, and `sync-sent.json`, hashes of what's already in your

@@ -242,10 +242,12 @@ struct RootView: View {
             // Drawn over the dock: its keys hang out to the right while ⌘
             // is held (ShortcutHints).
             ActivityBar()
+                .background(PanelTint())
                 .zIndex(1)
             DockView(controller: app.dock, options: Self.options, content: content)
             if let thread = app.paneThread {
                 PanelRail(thread: thread, project: app.openProject)
+                    .background(PanelTint())
             }
         }
         // The tour's frames are in this space, and its overlay covers it.
@@ -273,6 +275,9 @@ struct RootView: View {
         }
         // Saves where the window is, so the next launch opens it there.
         .background(MainWindowFrameTracker())
+        // The wallpaper or the blurred desktop, under everything
+        // (Appearance.swift); the panels over it are see-through.
+        .background(AppBackdrop())
     }
 
     /// Once the page or panel is drawn, for the card to point at.
@@ -293,6 +298,7 @@ struct RootView: View {
     /// top of the window, with room for the traffic lights in the corner.
     static var options: DockOptions {
         var o = DockOptions()
+        o.panelOpacity = Appearance.shared.effectivePanelOpacity
         o.headerHeight = PaneHeader<EmptyView, EmptyView>.height
         o.titleSize = TypeScale.label
         // The traffic lights take 78 points from the left edge; the

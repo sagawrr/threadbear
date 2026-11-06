@@ -137,8 +137,11 @@ private struct HomeStatTile: View {
 /// same): build-app.sh copies it into Contents/Resources, and `swift run`
 /// and `swift test` have it beside the binary.
 enum Art {
-    @MainActor static let librarian: NSImage? = image("librarian")
-    @MainActor static let scheduled: NSImage? = image("scheduled")
+    // This fork: your own picture for the page if you've set one
+    // (Settings > Appearance), else the mascot on a card. Upstream's
+    // painted bears still ship in Resources/Art and aren't shown.
+    @MainActor static var librarian: NSImage? { Appearance.shared.picture(.librarian) ?? Mascot.card(.sit) }
+    @MainActor static var scheduled: NSImage? { Appearance.shared.picture(.scheduled) ?? Mascot.card(.sleep) }
 
     private static let bundle: Bundle? = {
         let name = "Threadbear_Threadbear.bundle"

@@ -74,8 +74,21 @@ public struct DockOptions {
     public var windowContent: @MainActor (AnyView) -> AnyView = { $0 }
     /// Called on a panel's window of its own as it's made, before it shows.
     public var prepareWindow: @MainActor (NSWindow) -> Void = { _ in }
+    /// How solid the panels' own fill is, for an app that draws something
+    /// behind the dock (a wallpaper) and wants it to show through. 1, the
+    /// default, is the plain window colour.
+    public var panelOpacity: Double = 1
 
     public init() {}
+
+    var seeThrough: Bool { panelOpacity < 1 }
+    /// See-through panels split their fill in two: some under the whole
+    /// dock, so the gaps between panels are tinted too (a bare wallpaper
+    /// in a 1 pt gap is a bright stripe), and the rest on each panel, so
+    /// the hairline in the gaps still stands out. Over each other the two
+    /// come to `panelOpacity`.
+    var panelFill: Double { seeThrough ? panelOpacity / 2 : 1 }
+    var underFill: Double { seeThrough ? 1 - (1 - panelOpacity) / (1 - panelOpacity / 2) : 1 }
 }
 
 enum DockSpace {
@@ -121,8 +134,10 @@ public struct DockView: View {
     public var body: some View {
         NodeView(node: controller.layout.root)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(DockTheme.hairline)
-            .background(DockTheme.panel)
+            // Stronger when the panels are see-through, as half of it is
+            // then under each panel's own fill.
+            .background(options.seeThrough ? Color.primary.opacity(0.2) : DockTheme.hairline)
+            .background(DockTheme.panel.opacity(options.underFill))
             .overlay(alignment: .topLeading) {
                 DragOverlay()
                     .allowsHitTesting(false)
@@ -389,7 +404,7 @@ struct GroupView: View {
                 .opacity(lifted ? 0.18 : 1)
                 .scaleEffect(lifted ? 0.985 : 1)
         }
-        .background(DockTheme.panel)
+        .background(DockTheme.panel.opacity(options.panelFill))
         .overlay(alignment: .top) {
             if !header && !corner {
                 HiddenTitleStrip(panel: group.selected)
