@@ -180,6 +180,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         MainActor.assumeIsolated {
             let app = AppModel.shared
             let arguments = CommandLine.arguments
+            // This fork: an icon of your own, if you've set one.
+            Appearance.shared.applyIcon()
             if AppUpdater.isInstalledApp {
                 HangWatch.start(folder: HangWatch.defaultFolder, build: BuildInfo.read(bundle: Bundle.main.bundleURL)?.short, report: CrashReporting.reportHang)
             }

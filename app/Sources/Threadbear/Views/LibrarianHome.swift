@@ -10,7 +10,7 @@ struct LibrarianHome: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        HomePage(picture: Art.librarian, pictureLabel: "The Librarian's picture",
+        HomePage(picture: Art.librarian, pictureLabel: Appearance.shared.hasPicture(.librarian) ? "The Librarian's picture" : "The librarian bear, filing a card in a card catalogue",
                  stats: app.librarian.map { LibrarianStats.tiles($0, projects: app.projects, threads: Array(app.threads.values)) } ?? []) {
             LibrarianAbout(status: app.librarian)
         } below: {

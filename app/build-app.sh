@@ -20,9 +20,9 @@ FINAL_DIR="${THREADBEAR_APP_DIR:-$HOME/Applications/$APP_NAME.app}"
 STAGE_DIR="$(dirname "$FINAL_DIR")/.$APP_NAME.app.staging"
 OLD_DIR="$(dirname "$FINAL_DIR")/.$APP_NAME.app.old"
 ICON_SOURCE="$SCRIPT_DIR/icons/threadbear.png"
-# This fork: an icon of your own, kept beside the wallpaper and outside the
-# repo (docs/on-your-mac.md), is used in place of the one that ships. A
-# 1024 by 1024 PNG with the usual icon margins.
+# This fork: an icon of your own (Settings > Appearance > App icon), kept
+# outside the repo (docs/on-your-mac.md), is used in place of the one that
+# ships. A 1024 by 1024 PNG with the usual icon margins.
 OWN_ICON="$HOME/Library/Application Support/Threadbear/appearance/icon.png"
 if [[ -f "$OWN_ICON" ]]; then ICON_SOURCE="$OWN_ICON"; fi
 

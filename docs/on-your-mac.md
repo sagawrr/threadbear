@@ -31,16 +31,19 @@ File references are where to look.
   apps; it converts pictures with ImageMagick and rsvg-convert, and reads
   the account's full name from `getent passwd` rather than `id -F`.
 - **A command:** `~/.local/bin/threadbear`.
-- **This fork's look:** a picture you choose in Settings > Appearance (the
-  wallpaper, the mascot's pictures, the Librarian's and Scheduled's page
-  pictures) is copied to
+- **This fork's look:** nothing, until you change something in Settings >
+  Appearance: out of the box it's Threadbear as it comes. A picture you
+  choose there (the background, the bear's and its cub's, the Librarian's
+  and Scheduled's page pictures) is copied to
   `~/Library/Application Support/Threadbear/appearance/`, and deleted from
-  there when you remove or replace it. An `icon.png` there, if you put one,
-  is the app's icon from its next build (`app/build-app.sh`). The rest (backdrop, blur, fade, how
-  see-through the panels are, the accent) is in the app's own defaults,
-  where the accent is also written as `AppleAccentColor` and
-  `AppleHighlightColor`, which recolour this app only. None of it is sent
-  anywhere (`app/Sources/Threadbear/Appearance.swift`).
+  there when you remove or replace it. An icon you choose is saved there as
+  `icon.png`, shown on the Dock while the app runs, and built into the app
+  in place of its own the next time it's built (`app/build-app.sh`). The
+  rest (background, blur, fade, how see-through the panels are, the accent)
+  is in the app's own defaults under `appearance.`, where the accent is also
+  written as `AppleAccentColor` and `AppleHighlightColor`, which recolour
+  this app only. "Restore the Original Look" removes all of it. None of it
+  is sent anywhere (`app/Sources/Threadbear/Appearance.swift`).
 - **Files:** the data folder `~/Library/Application Support/Threadbear`
   (threads, settings, `secrets/`, runner releases, the pinned release key
   `upstream-signers`, and `sync-sent.json`, hashes of what's already in your

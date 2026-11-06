@@ -4,18 +4,21 @@ import ImageIO
 import Observation
 import SwiftUI
 
-/// How the window looks, in this fork: what's behind the panels (nothing,
-/// the desktop blurred, or a picture of your own), how much of it shows
-/// through them, and the accent colour. All of it is this Mac's own
-/// (UserDefaults), set in Settings > Appearance, and none of it goes to
-/// the runner or the backend.
+/// How the window looks, in this fork. Out of the box it's Threadbear as
+/// it comes: the plain window, the Mac's own accent, the bear. Settings >
+/// Appearance can change each part on its own: what's behind the panels
+/// (the desktop blurred, or a picture of yours), how much of it shows
+/// through them, the accent colour, and a picture of yours in place of
+/// the bear, the two page pictures and the app's icon. "Restore the
+/// Original Look" there puts it all back.
 ///
-/// The picture is yours: Settings copies the file you pick into
-/// `Appearance.folder`, outside the repo, so a character you like is never
+/// All of it is this Mac's own (UserDefaults), and none of it goes to the
+/// runner or the backend. A picture is yours: Settings copies the file you
+/// pick into `Appearance.folder`, outside the repo, so it's never
 /// committed or pushed with the code.
 @Observable @MainActor
 final class Appearance {
-    static let shared = Appearance()
+    static let shared = Appearance(showsInDock: true)
 
     /// What's drawn behind the panels.
     enum Backdrop: String, CaseIterable, Identifiable {
@@ -29,7 +32,7 @@ final class Appearance {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .off: "None"
+            case .off: "Original"
             case .desktop: "Desktop blur"
             case .picture: "Picture"
             }
@@ -89,21 +92,29 @@ final class Appearance {
         }
     }
 
-    /// The pictures you can put in place of the drawn mascot: the mascot
-    /// herself (the working line, the tour), how she looks hibernating
-    /// and while sub-agents are out, and the two at the top of the
-    /// Librarian's and Scheduled's pages.
+    /// The pictures you can put in place of Threadbear's own: the bear
+    /// (the working line, the tour), the cub that stands in while
+    /// sub-agents are out, and the two at the top of the Librarian's and
+    /// Scheduled's pages.
     enum Slot: String, CaseIterable, Identifiable {
-        case mascot, mascotAsleep, mascotSmall, librarian, scheduled
+        case mascot, mascotSmall, librarian, scheduled
 
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .mascot: "Mascot"
-            case .mascotAsleep: "Mascot, hibernating"
-            case .mascotSmall: "Mascot, sub-agents"
+            case .mascot: "Bear"
+            case .mascotSmall: "Cub"
             case .librarian: "Librarian page"
             case .scheduled: "Scheduled page"
+            }
+        }
+        /// Where it shows, for Settings.
+        var detail: String {
+            switch self {
+            case .mascot: "Beside \u{201C}Bear with me\u{201D} while a thread works, and in the tour"
+            case .mascotSmall: "While sub-agents are out. Without one, the bear's picture"
+            case .librarian: "At the top of the Librarian's page"
+            case .scheduled: "At the top of Scheduled's page"
             }
         }
         fileprivate var key: String { "appearance.picture.\(rawValue)" }
@@ -118,12 +129,19 @@ final class Appearance {
         static let accent = "appearance.accent"
     }
 
-    nonisolated static let defaultBackdrop = Backdrop.desktop
-    nonisolated static let defaultAccent = Accent.sakura
+    /// Threadbear as it comes.
+    nonisolated static let defaultBackdrop = Backdrop.off
+    nonisolated static let defaultAccent = Accent.system
     nonisolated static let blurRange: ClosedRange<Double> = 0...40
     nonisolated static let dimRange: ClosedRange<Double> = 0...0.8
-    /// Below about a third, text over a busy picture stops being readable.
-    nonisolated static let panelRange: ClosedRange<Double> = 0.35...1
+    /// Below about two fifths, text over a busy picture stops being readable.
+    nonisolated static let panelRange: ClosedRange<Double> = 0.4...1
+    /// Where the sliders start once there's a backdrop: soft and solid
+    /// enough that text over a busy picture reads without squinting, and
+    /// not so solid that a dark window hides the picture altogether.
+    nonisolated static let defaultBlur = 16.0
+    nonisolated static let defaultDim = 0.25
+    nonisolated static let defaultPanel = 0.7
     /// The longest side a wallpaper is kept at: enough for a 5K screen's
     /// window, and a fraction of what a camera's picture would take.
     nonisolated static let maxPixels = 3200
@@ -136,6 +154,10 @@ final class Appearance {
     }
 
     private let defaults: UserDefaults
+    /// Where this one keeps its pictures: `Appearance.folder`, but for tests.
+    let folder: URL
+    /// Whether an icon of yours goes on the Dock: the app's own, not a test's.
+    private let showsInDock: Bool
 
     var backdrop: Backdrop { didSet { defaults.set(backdrop.rawValue, forKey: Key.backdrop) } }
     /// The blur over the picture, in points.
@@ -173,7 +195,7 @@ final class Appearance {
     @ObservationIgnored private var renders = 0
     /// Why the last picture wasn't taken, for Settings to say.
     private(set) var problem: String?
-    /// Bumped when a page picture changes, so the pages draw the new one.
+    /// Bumped when one of the pictures changes, so what shows it redraws.
     private(set) var slotsVersion = 0 {
         didSet { NotificationCenter.default.post(name: Self.picturesChanged, object: self) }
     }
@@ -183,17 +205,44 @@ final class Appearance {
     /// Page pictures already read, by path: a page asks every time it draws.
     @ObservationIgnored private var slotCache: [String: NSImage] = [:]
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, folder: URL = Appearance.folder, showsInDock: Bool = false) {
         self.defaults = defaults
+        self.folder = folder
+        self.showsInDock = showsInDock
         backdrop = defaults.string(forKey: Key.backdrop).flatMap(Backdrop.init(rawValue:)) ?? Self.defaultBackdrop
-        blur = Self.number(defaults, Key.blur, in: Self.blurRange, default: 18)
-        dim = Self.number(defaults, Key.dim, in: Self.dimRange, default: 0.25)
-        panelOpacity = Self.number(defaults, Key.panel, in: Self.panelRange, default: 0.72)
+        blur = Self.number(defaults, Key.blur, in: Self.blurRange, default: Self.defaultBlur)
+        dim = Self.number(defaults, Key.dim, in: Self.dimRange, default: Self.defaultDim)
+        panelOpacity = Self.number(defaults, Key.panel, in: Self.panelRange, default: Self.defaultPanel)
         let accent = Self.savedAccent(defaults)
         self.accent = accent
         accentAtLaunch = accent
         wallpaperPath = defaults.string(forKey: Key.wallpaper)
+        icon = Self.readScaled(folder.appendingPathComponent(Self.iconName), maxPixels: 256)
         loadWallpaper()
+    }
+
+    /// Whether anything at all has been changed from Threadbear as it comes.
+    var isOriginal: Bool {
+        _ = slotsVersion
+        return backdrop == .off && accent == .system && wallpaperPath == nil && icon == nil
+            && Slot.allCases.allSatisfy { defaults.string(forKey: $0.key) == nil }
+            && [Key.blur, Key.dim, Key.panel].allSatisfy { defaults.object(forKey: $0) == nil }
+    }
+
+    /// Threadbear as it comes: no backdrop, the Mac's accent, the bear, its
+    /// own page pictures and icon. Deletes this app's copies of your
+    /// pictures (never the files you picked them from).
+    func restoreOriginal() {
+        removeWallpaper()
+        for slot in Slot.allCases { removePicture(slot) }
+        removeIcon()
+        backdrop = .off
+        accent = .system
+        blur = Self.defaultBlur
+        dim = Self.defaultDim
+        panelOpacity = Self.defaultPanel
+        for key in [Key.backdrop, Key.accent, Key.blur, Key.dim, Key.panel] { defaults.removeObject(forKey: key) }
+        problem = nil
     }
 
     private static func number(_ defaults: UserDefaults, _ key: String, in range: ClosedRange<Double>, default value: Double) -> Double {
@@ -251,7 +300,7 @@ final class Appearance {
         wallpaperPath = nil
         setWallpaper(nil)
         defaults.removeObject(forKey: Key.wallpaper)
-        if backdrop == .picture { backdrop = .desktop }
+        if backdrop == .picture { backdrop = .off }
     }
 
     /// Reads the picture off the main thread: a big one takes a moment to
@@ -322,9 +371,9 @@ final class Appearance {
         return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
     }
 
-    // MARK: Page pictures
+    // MARK: Pictures
 
-    /// Your picture for a page, if you've set one.
+    /// Your picture for a slot, if you've set one.
     func picture(_ slot: Slot) -> NSImage? {
         _ = slotsVersion
         guard let path = defaults.string(forKey: slot.key) else { return nil }
@@ -334,12 +383,22 @@ final class Appearance {
         return image
     }
 
-    /// Your picture for a pose of the mascot: its own, else the mascot's.
+    /// Your picture for a pose of the bear: the cub's own, else the bear's.
     func mascot(_ pose: Bear.Pose) -> NSImage? {
         switch pose {
-        case .sit, .wave: picture(.mascot)
-        case .sleep: picture(.mascotAsleep) ?? picture(.mascot)
+        case .sit, .wave, .sleep: picture(.mascot)
         case .cub: picture(.mascotSmall) ?? picture(.mascot)
+        }
+    }
+
+    /// Whether a picture has see-through parts: a character cut out of its
+    /// background, or an icon. Those are shown whole; a plain photo is
+    /// cropped to a circle (the bear) or a tile (the icon).
+    nonisolated static func isCutOut(_ image: NSImage) -> Bool {
+        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return false }
+        switch cg.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast: return false
+        default: return true
         }
     }
 
@@ -368,6 +427,83 @@ final class Appearance {
         slotsVersion += 1
     }
 
+    // MARK: Icon
+
+    /// The icon's file in `folder`. app/build-app.sh looks for this name
+    /// too, and builds it into the app in place of the one that ships.
+    nonisolated static let iconName = "icon.png"
+    /// Your icon, if you've set one.
+    private(set) var icon: NSImage?
+
+    /// Makes an icon of the picture and keeps it in `folder`. The Dock
+    /// shows it straight away; the app's own file (Finder, Launchpad)
+    /// takes it up when the app is next built, which its updates do.
+    func chooseIcon(_ source: URL) {
+        guard let picture = Self.readScaled(source, maxPixels: 2048),
+              let tile = Self.iconTile(picture),
+              let png = NSBitmapImageRep(cgImage: tile).representation(using: .png, properties: [:]) else {
+            problem = "\(source.lastPathComponent) isn't a picture Threadbear can read."
+            return
+        }
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try png.write(to: folder.appendingPathComponent(Self.iconName), options: .atomic)
+        } catch {
+            problem = "Couldn't save that icon: \(error.localizedDescription)"
+            return
+        }
+        problem = nil
+        icon = NSImage(cgImage: tile, size: NSSize(width: 256, height: 256))
+        applyIcon()
+    }
+
+    func removeIcon() {
+        try? FileManager.default.removeItem(at: folder.appendingPathComponent(Self.iconName))
+        icon = nil
+        applyIcon()
+    }
+
+    /// Puts your icon on the Dock, or the app's own back. Called once the
+    /// app has launched (AppDelegate) and whenever the icon changes.
+    func applyIcon() {
+        guard showsInDock, let app = NSApp else { return }
+        if let icon {
+            app.applicationIconImage = icon
+        } else if app.applicationIconImage != nil {
+            // Nil hands the Dock back the app's own icon.
+            app.applicationIconImage = nil
+        }
+    }
+
+    /// A 1024 by 1024 icon from a picture. A plain photo is cropped to its
+    /// middle square and set in the usual rounded tile with its margins; a
+    /// picture with see-through parts is taken to be an icon already and
+    /// only fitted in.
+    nonisolated static func iconTile(_ picture: NSImage) -> CGImage? {
+        guard let source = picture.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(data: nil, width: 1024, height: 1024, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.interpolationQuality = .high
+        let width = CGFloat(source.width), height = CGFloat(source.height)
+        if isCutOut(picture) {
+            let scale = min(1024 / width, 1024 / height)
+            let size = CGSize(width: width * scale, height: height * scale)
+            context.draw(source, in: CGRect(x: (1024 - size.width) / 2, y: (1024 - size.height) / 2, width: size.width, height: size.height))
+            return context.makeImage()
+        }
+        let side = min(width, height)
+        guard let square = source.cropping(to: CGRect(x: (width - side) / 2, y: (height - side) / 2, width: side, height: side).integral) else { return nil }
+        // The system's tile: 824 of 1024, corners about 22% of its side.
+        let tile = CGRect(x: 100, y: 100, width: 824, height: 824), radius = 824 * 0.2237
+        context.saveGState()
+        context.addPath(CGPath(roundedRect: tile, cornerWidth: radius, cornerHeight: radius, transform: nil))
+        context.clip()
+        context.draw(square, in: tile)
+        context.restoreGState()
+        return context.makeImage()
+    }
+
     // MARK: Files
 
     /// A copy of `source` in `folder`, under a name of its own each time
@@ -379,9 +515,9 @@ final class Appearance {
             return nil
         }
         let ext = source.pathExtension.isEmpty ? "png" : source.pathExtension.lowercased()
-        let copy = Self.folder.appendingPathComponent("\(name)-\(Int(Date().timeIntervalSince1970)).\(ext)")
+        let copy = folder.appendingPathComponent("\(name)-\(Int(Date().timeIntervalSince1970)).\(ext)")
         do {
-            try FileManager.default.createDirectory(at: Self.folder, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             if FileManager.default.fileExists(atPath: copy.path) { try FileManager.default.removeItem(at: copy) }
             try FileManager.default.copyItem(at: source, to: copy)
         } catch {
@@ -396,7 +532,7 @@ final class Appearance {
     /// (a path set by hand in the defaults) is somebody's own file.
     private func removeIfOurs(_ path: String) {
         let url = URL(fileURLWithPath: path).standardizedFileURL
-        guard url.deletingLastPathComponent().path == Self.folder.standardizedFileURL.path else { return }
+        guard url.deletingLastPathComponent().path == folder.standardizedFileURL.path else { return }
         try? FileManager.default.removeItem(at: url)
     }
 }

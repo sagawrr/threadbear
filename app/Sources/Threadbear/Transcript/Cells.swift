@@ -951,7 +951,7 @@ final class GroupRowCell: RowCellView {
 
 // MARK: - Working line
 
-/// "Working on it · 12s" with the mascot at the end of a running turn: the
+/// "Bear with me · 12s" with the bear at the end of a running turn: the
 /// turn's one status line. Counts by itself once a second while it's in a
 /// window, so the row never re-renders as time passes.
 final class WorkingRowCell: RowCellView {
@@ -1022,9 +1022,9 @@ final class WorkingRowCell: RowCellView {
         let text: String
         if let startedAt {
             let elapsed = max(0, Date().timeIntervalSince(startedAt))
-            text = "Working on it · " + RelativeTime.duration(milliseconds: max(1000, elapsed * 1000))
+            text = "Bear with me · " + RelativeTime.duration(milliseconds: max(1000, elapsed * 1000))
         } else {
-            text = "Working on it"
+            text = "Bear with me"
         }
         if label.stringValue != text { label.stringValue = text }
     }
